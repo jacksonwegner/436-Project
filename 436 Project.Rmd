@@ -9,6 +9,18 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+library(dplyr)
+library(tidyverse)
 ```
 
+```{r}
+#https://www.kaggle.com/datasets/andrewsundberg/college-basketball-dataset/data
+college_data = read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+```
+
+```{r}
+college_data %>% 
+  rename("Conference" = CONF, "Games" = G, "Wins" = W, "Power_Rate" = BARTHAG, "Free_Throw" = EFG_O, "Turnover" = TORD, "Rebound" = ORB, "Two_Pointer" = X2P_O, "Three_Pointer" = X3P_O, "Tempo" = ADJ_T) %>% 
+  print()
+
+```
