@@ -1,0 +1,14 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-03-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+```
+
