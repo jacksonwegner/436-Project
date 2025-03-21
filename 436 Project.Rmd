@@ -1,0 +1,232 @@
+---
+title: "Stat 436 Milestone 2 Submission. Group 7"
+subtitle: "Members: Edward Peng, Ginnie Kim, Jackson Wegner, Lochlan Eaton, Sriram Swain, Steven Haworth"
+output: html_document
+date: "2025-03-21"
+---
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(warnings = FALSE, message = FALSE)
+```
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(reshape2)
+library(readr)
+library(ggridges)
+library(ggstatsplot)
+```
+
+**#1 Choice of design prototypes. Which visualization approaches did your team decide to implement, and why did you choose the ones that you did?**
+
+At this point in our project development, we need clear, concise, and comparative visualizations that naturally guide us into our downstream tasks. In selecting our design prototypes our team decided to deploy a plethora of comparative visualizations, with a particular focus on three visualization approaches: the scatter plot, the heatmap, and the boxplot/violin plot. Each of these was chosen to underscore unique patterns or aspects of our data and act to support several downstream analyses. 
+Early in project development, we discussed the importance that linear models could have in a downstream machine learning task; given this, our first choice of visualization was the scatter plot. We chose this method because of its seamless implementation and utility in examining trends. The scatter plot allows us to plot individual points and allows us to gauge correlations between key metrics like win percentage against different performance indicators like defense, or free throw percentage. This plot also lets us layer additional information like facets or regression lines, and enhance our capacity to compare multiple variables side by side. This level of granularity is going to be essential for understanding nuances in our data and setting the stage for deeper downstream analysis.
+In order to complement our granular visualization we needed a broader, high-level perspective on the interactions within our dataset. Thus, we created a correlation heatmap. We chose this visualization because it converts complex numerical relationships into an artistic, intuitive, color-coded matrix that highlights both strong and weak correlations. Correlation heatmap’s color palette allows us to clearly spot patterns in correlation. This method not only simplifies key variable interactions but also helps us prioritize areas for further exploration. 
+While the two prior visualizations offer granularity and valuable insight into variable interaction, we wanted to understand how our data would look under a focused analysis of aggregated data. To do this, we decided to use a bar chart to display win rates versus various performance attributes by grouping data into discrete value ranges. The bar chart allows us to quickly compare categories and identify which attributes are most closely associated with a high or low win rate. The bar chart not only reinforces the insights from the scatter plot but also serves to help us understand the aggregated impact of key variables on a team's success. If, for instance, the bar chart reveals certain ranges of free throw percentages notably correspond to a high win rate we can prioritize these variables for a more detailed analysis.
+Lastly, the boxplot and ridgeline will provide detailed insights into the overall distribution of our dataset. A boxplot will help us succinctly summarize statistical measures and central tendencies. Meanwhile, using a ridgeline plot adds another dimension by depicting the density of the data across the range of the boxplot, revealing subtler distributional aspects. Together, a boxplot and ridgeline plot will allow us to compare the distributions across various categories with ease. Using this approach ensures we capture summary statistics while simultaneously understanding the underlying shape of data distributions, which could indicate anomalies that merit further inspection. 
+In summary, we aim to create a well-rounded set of visualizations. Each visual prototype was carefully selected after considering its strengths and weaknesses in articulating different aspects of data. We believe these visualizations will lay a solid foundation for our subsequent analytical tasks and will be a consequential step forward in project progression.
+
+**#2 Demonstration and implementation discussion. For static visualizations, directly include your prototype figure. For interactive views, link to either a web-hosted prototype or a series of screenshots. Explain the logic of your implementation. **
+
+```{r}
+
+# Clean Data
+college_data = read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+college_data <- college_data %>% 
+  rename("Conference" = CONF, "Games" = G, "Wins" = W, "Power_Rate" = BARTHAG, "Free_Throw" = EFG_O, "Turnover" = TORD, "Rebound" = ORB, "Two_Pointer" = X2P_O, "Three_Pointer" = X3P_O, "Tempo" = ADJ_T) %>% mutate("Win_Rate" = Wins / Games)
+
+# Correlation Matrix
+college_matrix = as.matrix(college_data %>% select(where(is.numeric)))
+correlations = cor(college_matrix)
+melted = melt(correlations)
+
+# Plotting Heatmap
+ggplot(melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() + 
+  scale_fill_gradient2(low = "skyblue", high = "firebrick1", mid = "lightgrey") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Correlation Heatmap", fill = "Correlation Value") 
+```
+
+  When starting to understand a dataset, the primary goal is to think of relationships to study. Using a heatmap allows us to take a high-level glance of the data that is easily digestible. Through analyzing a correlation matrix, we can see what factors can be considered when it comes to a winning team. This heatmap represents negative correlations as blue, positive correlations in red, and values near 0 (no correlation) as grey. I specifically chose these colors as red and blue allow fast recognition. The red stands out and the blue fades into the background. I believe implementing this chart will not only help to present the data, but will serve our team greatly in our efforts to dissect relationships between variables.
+
+
+```{r}
+# Load data
+#https://www.kaggle.com/datasets/andrewsundberg/college-basketball-dataset/data
+college_data = read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+
+# Data cleaning
+college_data <- college_data %>%
+  rename("Conference" = CONF, 
+         "Games" = G, 
+         "Wins" = W, 
+         "Power_Rate" = BARTHAG, 
+         "Free_Throw" = EFG_O, 
+         "Turnover" = TORD, 
+         "Rebound" = ORB, 
+         "Two_Pointer" = X2P_O, 
+         "Three_Pointer" = X3P_O, 
+         "Tempo" = ADJ_T) %>%
+  mutate(Win_Percentage = Wins / Games)  # Calculate Win Percentage
+
+# Reshape data to long format for faceting
+college_data_long <- college_data %>%
+  pivot_longer(cols = c(Free_Throw, Three_Pointer, ADJOE, ADJDE),
+               names_to = "Metric",
+               values_to = "Value")
+
+# Specify legend labels
+legend_labels <- c("Free_Throw" = "Free Throw Rate", 
+                   "Three_Pointer" = "Three-Point Percentage", 
+                   "ADJOE" = "Adjusted Offensive Efficiency", 
+                   "ADJDE" = "Adjusted Defensive Efficiency")
+
+# Scatterplots 
+ggplot(college_data_long, aes(x = Value, y = Win_Percentage, color = Metric)) +  
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, col = "red") +
+  facet_wrap(~ Metric, scales = "free_x") +
+  scale_color_manual(
+    values = c("Free_Throw" = "blue", 
+               "Three_Pointer" = "purple", 
+               "ADJOE" = "green", 
+               "ADJDE" = "orange"),
+    labels = legend_labels
+  ) +
+  labs(title = "Basketball Metrics vs. Win Percentage",
+       x = "Metric Value",
+       y = "Win Percentage",
+       color = "Metric Type") +
+  theme_minimal()
+
+```
+
+
+  Scatterplots allow the identification of relationships, trends, and patterns between two continuous variables. By plotting individual data points, scatterplots help us visualize correlations, clusters, and potential outliers. For this dataset, we used scatterplots to examine the relationship between key basketball metrics and team success (measured by win percentage). In order to compare multiple relationships at once, we took the faceted approach where all four metrics (i.e., Free throw rate, Three-point percentage, Adjusted offensive efficiency, and Adjusted defensive efficiency) are displayed in separate panels. For clarity, we color coded by metric and added regression lines to highlight overall trends within each metric. This visualization provides insight into the strength and direction of the relationship between different performance factors and a team’s success.
+
+```{r}
+college_data = read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+college_data <- college_data %>%
+  rename("Conference" = CONF, 
+         "Games" = G, 
+         "Wins" = W, 
+         "Power_Rate" = BARTHAG, 
+         "Free_Throw" = EFG_O, 
+         "Turnover" = TORD, 
+         "Rebound" = ORB, 
+         "Two_Pointer" = X2P_O, 
+         "Three_Pointer" = X3P_O, 
+         "Tempo" = ADJ_T) %>%
+  mutate(Win_Percentage = Wins / Games)  # Calculate Win %
+
+data_for_density <- college_data %>% 
+  mutate(Performance_Tier = ntile(Win_Percentage,5) %>% as.factor()) %>% # group teams to five tiers by winning rate
+  pivot_longer(cols = c(ADJOE, ADJDE), 
+               names_to = "Efficiency_Type", 
+               values_to = "Efficiency")
+
+ggplot(data = data_for_density,
+       aes(x = Efficiency, 
+           y = Performance_Tier, 
+           fill = Efficiency_Type)) +
+  geom_density_ridges(alpha = 0.7, scale = 1.2) +
+  labs(title = "Offense vs. Defense Efficiency by Performance Tier",
+       subtitle = "Tier 5 includes the top-performing teams. Tier 1 includes those with the lowest winning records.",
+       x = "Offense and Defense Efficiency",
+       y = "Performance Tier",
+       fill = "Efficiency Type") +
+  scale_fill_brewer(labels = c("ADJOE" = "Offensive", "ADJDE" = "Defensive"),
+                    palette = "Set1")
+```
+
+  This visualization is a ridge plot which shows the distribution of defensive and offensive efficiency by 5 performance tier (College teams were grouped to five tiers by winning rate in advance using ntile command). We can see significant differences in these two efficiencies between different tiers. Top-performing teams have higher offensive efficiency and lower defensive efficiency, which means offensive and defensive efficiency are two important variables for predicting the winning rate.
+
+```{r}
+df <- read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+
+# Compute win ratio and categorize teams into tiers
+df$WIN_RATIO <- df$W / df$G
+
+df$WIN_TIER <- cut(
+  df$WIN_RATIO,
+  breaks = c(-Inf, 0.5, 0.75, Inf),
+  labels = c("Low", "Medium", "High")
+)
+
+# Violin Plot - Free Throw Rate by Win Tier
+ggbetweenstats(
+  data = df,
+  x = "WIN_TIER",
+  y = "FTR",
+  title = "Free Throw Rate by Win Tier",
+  xlab = "Win Tier",
+  ylab = "Free Throw Rate (FTR)",
+  type = "parametric",
+  violin.args = list(trim = FALSE),
+  messages = FALSE
+)
+
+# Box Plot - 3-Point Percentage by Conference
+ggbetweenstats(
+  data = df %>% filter(CONF %in% c("B10", "ACC", "SEC", "B12", "P10", "WCC")),
+  x = "CONF",
+  y = "X3P_O",
+  title = "3-Point Percentage by Conference",
+  xlab = "Conference",
+  ylab = "3-Point Percentage",
+  type = "parametric",
+  messages = FALSE
+)
+
+```
+  
+  Violin plots provide a detailed view of data distribution while incorporating statistical 
+summaries, making them ideal for analyzing team performance in NCAA basketball. They combine elements of box plots and density plots, showing both the spread and probability distribution of data points, which helps identify patterns, skewness, and potential outliers in team performance metrics. The 3-Point Percentage by Conference plot highlights differences in shooting efficiency, with WCC (35.30%) and ACC (34.86%) leading, while SEC (33.62%) lags behind. The statistical test (F_Welch(4, 327.09) = 8.42, p = 1.77e-06) confirms significant variation among conferences. Similarly, the Free Throw Rate by Win Tier plot shows a trend where higher win teams have slightly better free throw rates (35.01% vs. 33.72%), reinforcing the importance of free throws in winning games (F_Welch(2, 1069.04) = 25.30, p = 1.84e-11). These plots provide a clear visual representation of how shooting efficiency impacts team success
+
+
+**#3 Critical evaluation. Now that you see the designs on your real data, what trade-offs do you exist between alternative designs? E.g., there may be trade-offs between ease-of-learning, information density, analysis efficiency, and potential for user misinterpretation. How do you plan to proceed in the final interface or review?**
+
+  Each visualization design we implemented–the heatmap, bar chart, scatter plot, viol/box plot, and later ridge line plot, all offer distinct advantages but introduce potential trade-offs. The heatmap helped us confirm our intuition–we were suspicious of a correlation between basic performative measures like free throw rate and win rate, and the heatmap shows strong correlations between free throw rate, three-point percentage, and win percentage. The intuitive color palette also helped us find more subtle correlations between variables and winning such as turnovers.However, this method is great for identifying variables of interest in the last granular detail needed to understand the distributions, and has the potential to capture spurious correlations. The bar chart aggregates performative data into discrete values, which offers us a straightforward comparison of average win percentages across different statistical bins. This approach is useful for broad analysis like grasping quick differences in key metrics that align with success. This aggregation technique can also reduce the visual effect of anomalies on our data. Despite its clarity, the bar charts aggregation can obscure fine nuances that aren’t anomalous, as binning could smooth over important variations that a more detailed visual can reveal. The scatter plot is excelled in illustrating the relationship between continuous performative measures and win percentage. For instance, we have evidence that teams with exceptionally high free throw percentages tend to win more games, a trend that confirms intuition, and invites further exploration techniques. Furthermore, the scatter plot is allowing us to gain a tentative understanding of outliers present across these variables. Yet, when we facet multiple dimensions or facets, we risk introducing visual clutter and complicate interpretation. 
+We also decided to add a ridge line plot, for we understood that this plot can show how the distribution of offensive and defensive efficiencies may vary across performance tiers. The ridgeline shows us that as you move from tier 1 up to tier 5 the offensive and defense distributions slightly shift right, but the mid-tiers have large overlaps. This could indicate less specialized teams with less emphasis on offensive or defensive performance. These insights are impactful; however, the ridgeline smooths some outliers that may need to be investigated. Furthermore, we worry that the mid-tiers may be too cluttered and require more precise comparisons to understand how big of a difference in offense and defense exist within a tier. 
+Lastly, the boxplot and violin plot show us how shooting proficiency varies across different conferences, while simultaneously visualizing each distribution's shape. Unlike a simple box plot, the embedded violin plot is 3-point percentages clustered around particular values. The boxplot and violin plot are statistically rich; however, their symmetric shapes can be confusing,and the violin plot does not spot extreme values as clearly as our scatter plot. Going forward, we’ll need to ensure clear and thoughtful labeling, scaling and explanations. 
+
+
+```{r}
+suppressWarnings({
+  
+college_data = read.csv("https://uwmadison.box.com/shared/static/ohboihasjox7imnqn926v434sstj8fzs.csv")
+
+# Clean Data
+college_data <- college_data %>% 
+  rename("Conference" = CONF, "Games" = G, "Wins" = W, "Power_Rate" = BARTHAG, "Free_Throw" = EFG_O, "Turnover" = TORD, "Rebound" = ORB, "Two_Pointer" = X2P_O, "Three_Pointer" = X3P_O, "Tempo" = ADJ_T) %>% mutate("Win_Rate" = Wins / Games)
+
+# Select Attributes to Analyze
+attributes <- c("Free_Throw", "Turnover", "Rebound", "Two_Pointer", "Three_Pointer", "Tempo")
+
+# Convert Attributes into Binned Categories for Bar Plots
+college_data_binned <- college_data %>%
+  pivot_longer(cols = attributes, names_to = "Attribute", values_to = "Value") %>%
+  mutate(Bin = cut(Value, breaks = 10)) %>% 
+  group_by(Attribute, Bin) %>%
+  summarize(Average_Win_Rate = mean(Win_Rate, na.rm = TRUE), .groups = "drop")
+
+# Plot Bar Chart
+ggplot(college_data_binned, aes(x = Bin, y = Average_Win_Rate, fill = Attribute)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Attribute, scales = "free_x") + 
+  theme_minimal() +
+  labs(title = "Average Win Rate by Attribute", x = "Attribute Value Ranges", y = "Average Win Rate (%)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+})
+
+```
+
+
+
+
+
+
